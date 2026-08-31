@@ -1,0 +1,16 @@
+# Секреты (никогда не коммитить)
+.env
+.age-key.txt
+*.pem
+*_key
+.ssh_*
+
+# Данные бота
+data/
+*.pickle
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/

@@ -1,0 +1,68 @@
+name: Deploy Telegram Bot
+
+on:
+  push:
+    branches: [main]
+    paths: ["**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup sops + age
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age sops 2>/dev/null || true
+          # fallback: скачать sops, если нет в apt
+          which sops || (curl -sLo sops https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64 \
+            && chmod +x sops && sudo mv sops /usr/local/bin/sops)
+
+      - name: Write age key from secret
+        env:
+          AGE_SECRET_KEY: ${{ secrets.AGE_SECRET_KEY }}
+        run: |
+          printf '%s\n' "$AGE_SECRET_KEY" > .age-key.txt
+          chmod 600 .age-key.txt
+
+      - name: Decrypt secrets
+        env:
+          SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age-key.txt
+        run: |
+          # деплой-инфа (host/user) — yaml
+          sops -d --input-type yaml --output-type yaml .deploy.sops.yaml > /tmp/deploy.env
+          cat /tmp/deploy.env >> "$GITHUB_ENV"
+          # конфиг бота → .env (KEY=value для env_file)
+          sops -d --input-type dotenv --output-type dotenv .env.sops.yaml > .env
+          echo "secrets decrypted"
+
+      - name: Rsync bot to server
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avz --delete --exclude .env --exclude .env.sops.yaml --exclude .deploy.sops.yaml --exclude .age-key.txt --exclude .sops.yaml --exclude data --exclude .venv --exclude __pycache__ --exclude tests --exclude test_*.py
+          path: ./
+          remote_path: /opt/telegram-wp-bot/
+          remote_host: ${{ env.SERVER_HOST }}
+          remote_user: ${{ env.SERVER_USER }}
+          remote_key: ${{ secrets.EU_ROOT_SSH_KEY }}
+
+      - name: Upload decrypted .env to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ secrets.EU_ROOT_SSH_KEY }}
+          source: ".env"
+          target: "/opt/telegram-wp-bot/"
+
+      - name: Fix .env perms and rebuild container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SERVER_HOST }}
+          username: ${{ env.SERVER_USER }}
+          key: ${{ secrets.EU_ROOT_SSH_KEY }}
+          script: |
+            chmod 600 /opt/telegram-wp-bot/.env
+            cd /opt/telegram-wp-bot
+            docker compose up -d --build
