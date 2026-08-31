@@ -1,17 +1,8 @@
-SERVER_HOST: ENC[AES256_GCM,data:mG4NAey3+oTF4Bg/lPI=,iv:sjAhgYtxzXy5hm8c5SskLFnyktUHpWXonWw/uU+yJMU=,tag:nOCl9RczNzxyRirVkYRhww==,type:str]
-SERVER_USER: ENC[AES256_GCM,data:9TAO+Q==,iv:5osZqAQYj/cNa92Yhs2f3LL21L7Ju8LqSmli5kLK1Ag=,tag:NPwrac1lBZBvhdtbZP5bOw==,type:str]
-sops:
-    age:
-        - enc: |
-            -----BEGIN AGE ENCRYPTED FILE-----
-            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBJY2gwYldmRnpHcGViKzFF
-            RXZ4N2R4K0hMM0t2UmZkcWwxWUoxenpvZldRClRLT3ljNVFvOFU2V2laeDVKNC8v
-            clg2L3pTV2dudWpWT3BRTUxQM1A5YlEKLS0tIEdhSUJTVUtSdktTZUx3bThtb0c0
-            NEhUdDNTam5xV2Z6S1UxMjZ1dXpIMDQK4FzGTHnhqqzOqgNijsjlKDL5SkeKHfvs
-            t2hvtl6ponf/EOzuAvXCtapO2SYtY8TPb6P9ilRBtcfXGgmPc2iJzQ==
-            -----END AGE ENCRYPTED FILE-----
-          recipient: age14tw6h9aaq6m2s4ah7gn3qp2ymparvuf6atnhh0xpv6xrdta6lvcqwvw6rs
-    lastmodified: "2026-08-31T14:29:22Z"
-    mac: ENC[AES256_GCM,data:NyJ9tbKIDVUucRGEu3bZliS8Puq6uoskyDJJvzRMqv2XzIGMbwikdBdseoiKU9Nkp8K0zBqXmif2RE9U0B9l8xCw7oL+54hPhIfbAHaEK9MOpLh+8hq2rj7zOIY++rAHVk5Kmrz4Gy9KCPlGBTesYSq7rV4ppOQe/O047AkGLs4=,iv:oR/8xsU2fyvMZde4xRiq5g3qPcfamyxZup/75+RTuxE=,tag:MAVWfNVTdwXYgSu2EofA+A==,type:str]
-    unencrypted_suffix: _unencrypted
-    version: 3.13.3
+SERVER_HOST=ENC[AES256_GCM,data:6uSarA3FF1t6yw11F/Y=,iv:eO6MUmoLEb5BysJORgqKLMindh2CFvDuzGBnp9qd5jg=,tag:iZp82YdpBZJqXAyGRe8k/A==,type:str]
+SERVER_USER=ENC[AES256_GCM,data:TrabYQ==,iv:0iKLqXcS1isn8QYdX3A3Rnj9XgFRtQrDsiB3Woxhqnc=,tag:o4ZZfZxbQXWwAKDodBFvOg==,type:str]
+sops_age__list_0__map_enc=-----BEGIN AGE ENCRYPTED FILE-----\nYWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAzSmdEaVlyTUt4WnFIcUJC\nUzdQdUlMM09wWjJselMrV1RMZTkrZEdhVHlrCmNDOWEycndSOE9kSFJocEI5Rm1r\nRHVWbklVK1Bqc2J5VGNReDN2ZjhWVk0KLS0tIDhJMURQY09hV0czNGpWSENYSGxN\nWWRBL2YrVXBKc21sZVlZTko5dU5PSFkK7AQ3U2/Ky2+emwvUfn99QOlWh9AHi+WB\nDPFXNODWkddIewaBL4KRlgQd0q6LlbhMjBp9T5LbUuTUMSImlivWqQ==\n-----END AGE ENCRYPTED FILE-----\n
+sops_age__list_0__map_recipient=age14tw6h9aaq6m2s4ah7gn3qp2ymparvuf6atnhh0xpv6xrdta6lvcqwvw6rs
+sops_lastmodified=2026-08-31T14:33:51Z
+sops_mac=ENC[AES256_GCM,data:Oxms2npzsw+qLwYqL1dUHlrMHlcvTAF/QkWpPU+LQhNGTippEy95t4lgjMy4ckwUL3RATv/NeYF6e5Y35FdsdfzgQQOVYL9BY0WkRMI/+3o8E42vvjOdfXXGmY59CA1I+/IXAc6nnpWbpuH+0zxey8yJTBZ3DQGxKLgPBil+Xww=,iv:pRqizmmmqLmc/YLWgv2L7ohmE3kGKmuE/wtn4OdtffQ=,tag:yveUfxkMN8ToG8wK6Ql1UA==,type:str]
+sops_unencrypted_suffix=_unencrypted
+sops_version=3.13.3

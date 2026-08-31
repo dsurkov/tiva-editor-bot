@@ -26,7 +26,7 @@ jobs:
           set -e
           echo "sops: $(sops --version)"
           # деплой-инфа (host/user) — yaml
-          sops -d --input-type yaml --output-type yaml .deploy.sops.yaml > /tmp/deploy.env
+          sops -d --input-type dotenv --output-type dotenv .deploy.sops.yaml > /tmp/deploy.env
           cat /tmp/deploy.env >> "$GITHUB_ENV"
           # конфиг бота → .env (KEY=value для env_file)
           sops -d --input-type dotenv --output-type dotenv .env.sops.yaml > .env
