@@ -948,14 +948,26 @@ async def ecancel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_report_counts(
     context: ContextTypes.DEFAULT_TYPE, year: int, month: int
 ) -> dict[int, int]:
-    """{день: количество постов} для месяца (все статусы)."""
+    """{день: количество постов} для месяца — по дате РАБОТЫ над постами.
+
+    Для постов, созданных ботом, берём дату из локального журнала (день создания);
+    для остальных — fallback на modified (день последней работы).
+    """
+    wp = get_wp(context)
     try:
-        counts = await get_wp(context).get_post_date_counts()
+        # (post_id, работа_над) — все посты с их датой работы
+        work = await wp.get_posts_work_dates()
     except WordPressError as exc:
-        logger.warning("get_post_date_counts failed: %s", exc)
+        logger.warning("get_posts_work_dates failed: %s", exc)
         return {}
     prefix = f"{year:04d}-{month:02d}-"
-    return {int(d[8:10]): c for d, c in counts.items() if d.startswith(prefix)}
+    counts: dict[int, int] = {}
+    for pid, d in work:
+        if not d.startswith(prefix):
+            continue
+        day = int(d[8:10])
+        counts[day] = counts.get(day, 0) + 1
+    return counts
 
 
 async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -987,10 +999,10 @@ async def report_calendar_handler(update: Update, context: ContextTypes.DEFAULT_
     if action == "ignore":
         return REPORT_CAL
 
-    # день → список статей, НАД КОТОРЫМИ работали в этот день (по modified)
+    # день → список статей, над которыми работали в этот день
     chosen_day = f"{year:04d}-{month:02d}-{day:02d}"
     try:
-        articles = await get_wp(context).get_articles_modified_on_day(chosen_day)
+        articles = await get_wp(context).get_articles_worked_on_day(chosen_day)
     except WordPressError as exc:
         await q.message.reply_text(f"❌ Не удалось загрузить статьи: {exc}")
         return REPORT_CAL
@@ -1002,9 +1014,8 @@ async def report_calendar_handler(update: Update, context: ContextTypes.DEFAULT_
     lines = [f"📊 Работа {chosen_day} — {len(articles)} постов:"]
     for a in articles:
         mark = status_ok.get(a["status"], "❓")
-        lines.append(f"{mark} {a['title']}")
         link = a.get("link") or f"https://tivabeauty.ca/?post_type=journal&p={a['id']}"
-        lines.append(f"🔗 {link}")
+        lines.append(f"{mark} {a['title']} — {link}")
     await q.message.reply_text("\n\n".join(lines))
     return REPORT_CAL
 
