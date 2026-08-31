@@ -19,17 +19,12 @@ jobs:
           which sops || (curl -sLo sops https://github.com/getsops/sops/releases/download/v3.13.3/sops-v3.13.3.linux.amd64 \
             && chmod +x sops && sudo mv sops /usr/local/bin/sops)
 
-      - name: Write age key from secret
-        env:
-          AGE_SECRET_KEY: ${{ secrets.AGE_SECRET_KEY }}
-        run: |
-          printf '%s\n' "$AGE_SECRET_KEY" > .age-key.txt
-          chmod 600 .age-key.txt
-
       - name: Decrypt secrets
         env:
-          SOPS_AGE_KEY_FILE: ${{ github.workspace }}/.age-key.txt
+          SOPS_AGE_KEY: ${{ secrets.AGE_SECRET_KEY }}
         run: |
+          set -e
+          echo "sops: $(sops --version)"
           # деплой-инфа (host/user) — yaml
           sops -d --input-type yaml --output-type yaml .deploy.sops.yaml > /tmp/deploy.env
           cat /tmp/deploy.env >> "$GITHUB_ENV"
@@ -40,7 +35,7 @@ jobs:
       - name: Rsync bot to server
         uses: burnett01/rsync-deployments@7.0.1
         with:
-          switches: -avz --delete --exclude .env --exclude .env.sops.yaml --exclude .deploy.sops.yaml --exclude .age-key.txt --exclude .sops.yaml --exclude data --exclude .venv --exclude __pycache__ --exclude tests --exclude test_*.py
+          switches: -avz --delete --exclude .env --exclude .env.sops.yaml --exclude .deploy.sops.yaml --exclude .sops.yaml --exclude .age-key.txt --exclude data --exclude .venv --exclude __pycache__ --exclude test_*.py
           path: ./
           remote_path: /opt/telegram-wp-bot/
           remote_host: ${{ env.SERVER_HOST }}
