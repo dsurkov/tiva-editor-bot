@@ -73,12 +73,13 @@ def test_calendar_custom_prefix():
 
 
 def test_calendar_counts_mode():
-    # режим отчёта: дни работы над постами помечены ✍️ (не числом)
+    # режим отчёта: только ✍️ на днях работы, остальные дни — просто цифра (без эмодзи)
     markup = build_calendar(2026, 9, {}, TZ, today=FIXED_TODAY, counts={5: 14, 12: 3})
     texts = [btn.text for row in markup.inline_keyboard for btn in row]
-    assert "✍️ 5" in texts  # 5 сентября: работали
-    assert "✍️ 12" in texts  # 12 сентября: работали
-    assert "⚪ 20" in texts  # день без постов — обычный
+    assert "✍️ 5" in texts  # 5 сентября: работали → эмодзи
+    assert "✍️ 12" in texts  # 12 сентября: работали → эмодзи
+    assert any(t.strip() == "20" for t in texts)  # день без постов — просто цифра
+    assert not any(t == "⚪ 20" for t in texts)  # без эмодзи ⚪
 
 
 def test_calendar_legend():
