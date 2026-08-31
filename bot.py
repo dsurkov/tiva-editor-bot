@@ -965,7 +965,7 @@ async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     day_counts = await get_report_counts(context, year, month)
     kb = build_calendar(year, month, {}, tz, today=today.date(), prefix="rcal", counts=day_counts)
     await update.effective_message.reply_text(
-        "📊 Отчёт: в календаре — число постов за день. Нажмите на день, чтобы увидеть статьи.",
+        "📊 Отчёт: ✍️ — день, когда вы работали над постами. Нажмите, чтобы увидеть статьи этого дня.",
         reply_markup=kb,
     )
     return REPORT_CAL
@@ -987,10 +987,10 @@ async def report_calendar_handler(update: Update, context: ContextTypes.DEFAULT_
     if action == "ignore":
         return REPORT_CAL
 
-    # день → список статей с прямыми ссылками
+    # день → список статей, НАД КОТОРЫМИ работали в этот день (по modified)
     chosen_day = f"{year:04d}-{month:02d}-{day:02d}"
     try:
-        articles = await get_wp(context).get_articles_on_day(chosen_day)
+        articles = await get_wp(context).get_articles_modified_on_day(chosen_day)
     except WordPressError as exc:
         await q.message.reply_text(f"❌ Не удалось загрузить статьи: {exc}")
         return REPORT_CAL
@@ -999,7 +999,7 @@ async def report_calendar_handler(update: Update, context: ContextTypes.DEFAULT_
         return REPORT_CAL
 
     status_ok = {"publish": "✅", "future": "🟢", "draft": "📝", "pending": "⏳", "private": "🔒"}
-    lines = [f"📊 {chosen_day} — {len(articles)} постов:"]
+    lines = [f"📊 Работа {chosen_day} — {len(articles)} постов:"]
     for a in articles:
         mark = status_ok.get(a["status"], "❓")
         lines.append(f"{mark} {a['title']}")

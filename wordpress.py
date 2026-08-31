@@ -69,7 +69,11 @@ class WordPressClient:
         return [(str(item["date"])[:10], str(item["status"])) for item in data]
 
     async def get_post_date_counts(self) -> dict[str, int]:
-        """{YYYY-MM-DD: количество записей} по всем статусам, с пагинацией."""
+        """{YYYY-MM-DD: количество постов, НАД КОТОРЫМИ работали в этот день} по всем статусам.
+
+        Группировка по `modified` (дата создания/редактирования поста) — это день,
+        когда автор создавал посты, а не дата публикации. С пагинацией.
+        """
         counts: dict[str, int] = {}
         page = 1
         while True:
@@ -77,23 +81,46 @@ class WordPressClient:
                 "/wp-json/wp/v2/journal",
                 params={
                     "status": "publish,future,draft,pending,private",
-                    "per_page": 100, "page": page, "_fields": "id,date",
+                    "per_page": 100, "page": page, "_fields": "id,modified",
                 },
             )
-            logger.debug("GET post-date-counts page=%d → %d", page, resp.status_code)
+            logger.debug("GET post-work-counts page=%d → %d", page, resp.status_code)
             if resp.status_code >= 300:
                 raise WordPressError(resp.status_code, resp.text)
             data = resp.json()
             if not data:
                 break
             for item in data:
-                d = str(item["date"])[:10]
+                d = str(item["modified"])[:10]
                 counts[d] = counts.get(d, 0) + 1
             total_pages = int(resp.headers.get("X-WP-TotalPages", "1"))
             if page >= total_pages:
                 break
             page += 1
         return counts
+
+    async def get_articles_modified_on_day(self, day: str) -> list[dict[str, Any]]:
+        """Посты, над которыми работали в день day (modified в этот день)."""
+        data = await self._get(
+            "/wp-json/wp/v2/journal",
+            {
+                "status": "publish,future,draft,pending",
+                "modified_after": f"{day}T00:00:00",
+                "modified_before": f"{day}T23:59:59",
+                "per_page": 100,
+                "_fields": "id,title,date,status,link",
+            },
+        )
+        return [
+            {
+                "id": int(item["id"]),
+                "title": str(item["title"]["rendered"] or item["title"]["raw"]),
+                "date": str(item["date"]),
+                "status": str(item["status"]),
+                "link": str(item.get("link", "")),
+            }
+            for item in data
+        ]
 
     async def get_post_raw(self, post_id: int) -> dict[str, Any]:
         """Полные данные поста (context=edit): content.raw, meta, media, sections."""

@@ -73,11 +73,11 @@ def test_calendar_custom_prefix():
 
 
 def test_calendar_counts_mode():
-    # режим отчёта: вместо эмодзи — число постов за день (например «14 5» = 14 постов 5-го)
+    # режим отчёта: дни работы над постами помечены ✍️ (не числом)
     markup = build_calendar(2026, 9, {}, TZ, today=FIXED_TODAY, counts={5: 14, 12: 3})
     texts = [btn.text for row in markup.inline_keyboard for btn in row]
-    assert "14 5" in texts  # 5 сентября: 14 постов
-    assert "3 12" in texts  # 12 сентября: 3 поста
+    assert "✍️ 5" in texts  # 5 сентября: работали
+    assert "✍️ 12" in texts  # 12 сентября: работали
     assert "⚪ 20" in texts  # день без постов — обычный
 
 
