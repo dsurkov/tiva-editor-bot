@@ -38,6 +38,7 @@ def build_calendar(
     timezone: ZoneInfo,
     today: date | None = None,
     prefix: str = "cal",
+    counts: dict[int, int] | None = None,
 ) -> InlineKeyboardMarkup:
     """Сетка календаря на месяц.
 
@@ -46,6 +47,8 @@ def build_calendar(
     - Любой день выбираем (вперёд и назад). Прошлые дни с постами показывают эмодзи
       статуса, прошлые пустые — ✖️ (но оба выбираемы).
     - Сегодня/будущее с постами: эмодзи статуса. Свободные будущие дни: ⚪.
+    counts — режим отчёта: {день: кол-во постов}; вместо эмодзи статуса показывается
+      число постов (например «14»), дни без постов — ⚪/✖️.
     Callback-формат: <prefix>:<action>:<year>:<month>:<day>, action ∈ {nav, day, ignore}
     """
     if today is None:
@@ -83,7 +86,15 @@ def build_calendar(
             else:
                 cell_date = date(year, month, day)
                 status = day_status.get(day)
-                if status:
+                if counts:
+                    cnt = counts.get(day, 0)
+                    if cnt:
+                        marker = f"{cnt}"
+                    elif cell_date < today:
+                        marker = "✖️"
+                    else:
+                        marker = "⚪"
+                elif status:
                     marker = _status_emoji(status)
                 elif cell_date < today:
                     marker = "✖️"

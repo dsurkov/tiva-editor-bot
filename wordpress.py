@@ -68,6 +68,33 @@ class WordPressClient:
         )
         return [(str(item["date"])[:10], str(item["status"])) for item in data]
 
+    async def get_post_date_counts(self) -> dict[str, int]:
+        """{YYYY-MM-DD: количество записей} по всем статусам, с пагинацией."""
+        counts: dict[str, int] = {}
+        page = 1
+        while True:
+            resp = await self._client.get(
+                "/wp-json/wp/v2/journal",
+                params={
+                    "status": "publish,future,draft,pending,private",
+                    "per_page": 100, "page": page, "_fields": "id,date",
+                },
+            )
+            logger.debug("GET post-date-counts page=%d → %d", page, resp.status_code)
+            if resp.status_code >= 300:
+                raise WordPressError(resp.status_code, resp.text)
+            data = resp.json()
+            if not data:
+                break
+            for item in data:
+                d = str(item["date"])[:10]
+                counts[d] = counts.get(d, 0) + 1
+            total_pages = int(resp.headers.get("X-WP-TotalPages", "1"))
+            if page >= total_pages:
+                break
+            page += 1
+        return counts
+
     async def get_post_raw(self, post_id: int) -> dict[str, Any]:
         """Полные данные поста (context=edit): content.raw, meta, media, sections."""
         data = await self._get(

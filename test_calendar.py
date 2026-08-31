@@ -72,6 +72,15 @@ def test_calendar_custom_prefix():
     assert day15.callback_data.startswith("ecal:day:")
 
 
+def test_calendar_counts_mode():
+    # режим отчёта: вместо эмодзи — число постов за день (например «14 5» = 14 постов 5-го)
+    markup = build_calendar(2026, 9, {}, TZ, today=FIXED_TODAY, counts={5: 14, 12: 3})
+    texts = [btn.text for row in markup.inline_keyboard for btn in row]
+    assert "14 5" in texts  # 5 сентября: 14 постов
+    assert "3 12" in texts  # 12 сентября: 3 поста
+    assert "⚪ 20" in texts  # день без постов — обычный
+
+
 def test_calendar_legend():
     markup = build_calendar(2026, 9, {}, TZ, today=FIXED_TODAY)
     buttons = [btn for row in markup.inline_keyboard for btn in row]
@@ -123,6 +132,7 @@ if __name__ == "__main__":
     test_calendar_status_emojis()
     test_calendar_past_day_selectable()
     test_calendar_past_empty_day_x_selectable()
+    test_calendar_counts_mode()
     test_calendar_custom_prefix()
     test_calendar_legend()
     test_plan_future_day_morning_window()

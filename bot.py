@@ -49,6 +49,7 @@ logger = logging.getLogger("bot")
 # Состояния диалога
 CONTENT, EDIT, DATE, SUBMIT = range(4)
 EDAY, ELIST, EREQ, ECONFIRM = range(4, 8)
+REPORT_CAL = 8
 
 PEAK_MESSAGE = (
     "⚠️ Сейчас пиковые часы DeepSeek (01:00–04:00 и 06:00–10:00 UTC, пн–пт). "
@@ -60,6 +61,7 @@ FINISH_CONTENT = "✅ Finish Content"
 FINISH_EDIT = "✅ Finish Edit"
 NEW_ARTICLE = "📝 New Article"
 EDIT_ARTICLE = "✏️ Edit Article"
+REPORT = "📊 Отчёт"
 JOURNAL_URL = "https://tivabeauty.ca/journal/"
 CANCEL = "❌ Отмена"
 
@@ -192,7 +194,7 @@ async def auth_gate(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_menu(message, logger_ctx: str = "") -> None:
     kb = ReplyKeyboardMarkup(
-        [[NEW_ARTICLE, EDIT_ARTICLE]],
+        [[NEW_ARTICLE, EDIT_ARTICLE], [REPORT]],
         resize_keyboard=True,
     )
     journal_kb = InlineKeyboardMarkup(
@@ -347,7 +349,7 @@ async def content_text_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     text = update.effective_message.text
     if text == FINISH_CONTENT:
         return await finish_content(update, context)
-    if text in (FINISH_EDIT, NEW_ARTICLE, EDIT_ARTICLE, CANCEL):
+    if text in (FINISH_EDIT, NEW_ARTICLE, EDIT_ARTICLE, REPORT, CANCEL):
         await update.effective_message.reply_text("Это действие сейчас неактивно.")
         return CONTENT
     parts = context.user_data.setdefault("article_text", [])
@@ -421,7 +423,7 @@ async def cb_regen_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Тексты кнопок, которые НЕ должны уходить в AI как команды (двойные нажатия,
 # устаревшие кнопки, «New Article» посреди диалога)
-BUTTON_TEXTS = {FINISH_CONTENT, FINISH_EDIT, NEW_ARTICLE, EDIT_ARTICLE, CANCEL}
+BUTTON_TEXTS = {FINISH_CONTENT, FINISH_EDIT, NEW_ARTICLE, EDIT_ARTICLE, REPORT, CANCEL}
 
 
 async def edit_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -606,7 +608,7 @@ async def do_submit(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📂 Открыть Journal", url=JOURNAL_URL)],
         ]
     )
-    menu_kb = ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE]], resize_keyboard=True)
+    menu_kb = ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE], [REPORT]], resize_keyboard=True)
     if ud["status"] == "future":
         await reply(
             update,
@@ -738,10 +740,10 @@ async def ereq_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data.pop("edit_post_id", None)
         context.user_data.pop("edit_post", None)
         await update.effective_message.reply_text(
-            "Отменено.", reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE]], resize_keyboard=True)
+            "Отменено.", reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE], [REPORT]], resize_keyboard=True)
         )
         return ConversationHandler.END
-    if text in (NEW_ARTICLE, EDIT_ARTICLE):
+    if text in (NEW_ARTICLE, EDIT_ARTICLE, REPORT):
         await update.effective_message.reply_text("Это действие сейчас неактивно.")
         return EREQ
     parts = context.user_data.setdefault("edit_text", [])
@@ -901,7 +903,7 @@ async def eapply_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await q.message.reply_text(
         f"✅ Статья обновлена: {link}",
-        reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE]], resize_keyboard=True),
+        reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE], [REPORT]], resize_keyboard=True),
     )
     ud.clear()
     return ConversationHandler.END
@@ -924,7 +926,7 @@ async def edel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ECONFIRM
     await q.message.reply_text(
         "🗑 Статья удалена.",
-        reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE]], resize_keyboard=True),
+        reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE], [REPORT]], resize_keyboard=True),
     )
     context.user_data.clear()
     return ConversationHandler.END
@@ -935,10 +937,76 @@ async def ecancel_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await q.answer()
     await q.message.reply_text(
         "Отменено.",
-        reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE]], resize_keyboard=True),
+        reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE], [REPORT]], resize_keyboard=True),
     )
     context.user_data.clear()
     return ConversationHandler.END
+
+
+# ---------- Отчёт: календарь дней с постами + список статей ----------
+
+async def get_report_counts(
+    context: ContextTypes.DEFAULT_TYPE, year: int, month: int
+) -> dict[int, int]:
+    """{день: количество постов} для месяца (все статусы)."""
+    try:
+        counts = await get_wp(context).get_post_date_counts()
+    except WordPressError as exc:
+        logger.warning("get_post_date_counts failed: %s", exc)
+        return {}
+    prefix = f"{year:04d}-{month:02d}-"
+    return {int(d[8:10]): c for d, c in counts.items() if d.startswith(prefix)}
+
+
+async def cmd_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    tz = context.bot_data["config"].timezone
+    today = datetime.now(tz)
+    year, month = today.year, today.month
+    day_counts = await get_report_counts(context, year, month)
+    kb = build_calendar(year, month, {}, tz, today=today.date(), prefix="rcal", counts=day_counts)
+    await update.effective_message.reply_text(
+        "📊 Отчёт: в календаре — число постов за день. Нажмите на день, чтобы увидеть статьи.",
+        reply_markup=kb,
+    )
+    return REPORT_CAL
+
+
+async def report_calendar_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = update.callback_query
+    await q.answer()
+    parts = q.data.split(":")
+    action, year, month, day = parts[1], int(parts[2]), int(parts[3]), int(parts[4])
+    tz = context.bot_data["config"].timezone
+
+    if action == "nav":
+        day_counts = await get_report_counts(context, year, month)
+        kb = build_calendar(year, month, {}, tz, prefix="rcal", counts=day_counts)
+        await q.edit_message_reply_markup(reply_markup=kb)
+        return REPORT_CAL
+
+    if action == "ignore":
+        return REPORT_CAL
+
+    # день → список статей с прямыми ссылками
+    chosen_day = f"{year:04d}-{month:02d}-{day:02d}"
+    try:
+        articles = await get_wp(context).get_articles_on_day(chosen_day)
+    except WordPressError as exc:
+        await q.message.reply_text(f"❌ Не удалось загрузить статьи: {exc}")
+        return REPORT_CAL
+    if not articles:
+        await q.message.reply_text("В этот день нет статей.")
+        return REPORT_CAL
+
+    status_ok = {"publish": "✅", "future": "🟢", "draft": "📝", "pending": "⏳", "private": "🔒"}
+    lines = [f"📊 {chosen_day} — {len(articles)} постов:"]
+    for a in articles:
+        mark = status_ok.get(a["status"], "❓")
+        lines.append(f"{mark} {a['title']}")
+        link = a.get("link") or f"https://tivabeauty.ca/?post_type=journal&p={a['id']}"
+        lines.append(f"🔗 {link}")
+    await q.message.reply_text("\n\n".join(lines))
+    return REPORT_CAL
 
 
 # ---------- общие ----------
@@ -963,7 +1031,7 @@ async def cmd_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.effective_message.reply_text(
         "Отменено. Черновик удалён.",
-        reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE]], resize_keyboard=True),
+        reply_markup=ReplyKeyboardMarkup([[NEW_ARTICLE, EDIT_ARTICLE], [REPORT]], resize_keyboard=True),
     )
     return ConversationHandler.END
 
@@ -1010,6 +1078,8 @@ def main() -> None:
             CallbackQueryHandler(cb_new_article, pattern="^new_article$"),
             CommandHandler("edit", cmd_edit_article),
             MessageHandler(filters.Text([EDIT_ARTICLE]), cmd_edit_article),
+            CommandHandler("report", cmd_report),
+            MessageHandler(filters.Text([REPORT]), cmd_report),
         ],
         states={
             CONTENT: [
@@ -1041,6 +1111,7 @@ def main() -> None:
                 CallbackQueryHandler(edel_handler, pattern="^edel:\\d+$"),
                 CallbackQueryHandler(ecancel_handler, pattern="^ecancel$"),
             ],
+            REPORT_CAL: [CallbackQueryHandler(report_calendar_handler, pattern="^rcal:")],
         },
         fallbacks=[
             CommandHandler("cancel", cmd_cancel),
