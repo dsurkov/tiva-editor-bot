@@ -1010,13 +1010,14 @@ async def report_calendar_handler(update: Update, context: ContextTypes.DEFAULT_
         await q.message.reply_text("В этот день нет статей.")
         return REPORT_CAL
 
-    status_ok = {"publish": "✅", "future": "🟢", "draft": "📝", "pending": "⏳", "private": "🔒"}
+    import html as _html
+
     lines = [f"📊 Работа {chosen_day} — {len(articles)} постов:"]
     for a in articles:
-        mark = status_ok.get(a["status"], "❓")
+        title = _html.escape(_html.unescape(a["title"]))
         link = a.get("link") or f"https://tivabeauty.ca/?post_type=journal&p={a['id']}"
-        lines.append(f"{mark} {a['title']} — {link}")
-    await q.message.reply_text("\n\n".join(lines))
+        lines.append(f"• <b>{title}</b>\n{link}")
+    await q.message.reply_text("\n\n".join(lines), parse_mode="HTML")
     return REPORT_CAL
 
 
