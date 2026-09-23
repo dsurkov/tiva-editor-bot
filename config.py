@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 @dataclass(frozen=True)
 class Config:
     telegram_bot_token: str
-    deepseek_api_key: str
+    openrouter_api_key: str
     wp_base_url: str
     wp_username: str
     wp_application_password: str
@@ -42,7 +42,7 @@ def load_config() -> Config:
     )
     return Config(
         telegram_bot_token=_require("TELEGRAM_BOT_TOKEN"),
-        deepseek_api_key=_require("DEEPSEEK_API_KEY"),
+        openrouter_api_key=_require("OPENROUTER_API_KEY"),
         wp_base_url=_require("WP_BASE_URL").rstrip("/"),
         wp_username=_require("WP_USERNAME"),
         wp_application_password=_require("WP_APPLICATION_PASSWORD"),

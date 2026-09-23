@@ -52,7 +52,7 @@ EDAY, ELIST, EREQ, ECONFIRM = range(4, 8)
 REPORT_CAL = 8
 
 PEAK_MESSAGE = (
-    "⚠️ Сейчас пиковые часы DeepSeek (01:00–04:00 и 06:00–10:00 UTC, пн–пт). "
+    "⚠️ Сейчас пиковые часы OpenRouter (01:00–04:00 и 06:00–10:00 UTC, пн–пт). "
     "Редактура/заголовок недоступны. Приходите в непиковое время."
 )
 
@@ -446,11 +446,11 @@ async def _run_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, command:
     if not text.strip():
         await reply(update, "Текст статьи пуст — начните заново: /new")
         return EDIT
-    logger.debug("edit: запуск DeepSeek (команда=%r, текст %d симв.)", command, len(text))
+    logger.debug("edit: запуск OpenRouter (команда=%r, текст %d симв.)", command, len(text))
     try:
         services = await get_services_cached(context)
         sections = await get_sections_cached(context)
-        result = await edit_article(text, command, services, sections, cfg.deepseek_api_key)
+        result = edit_article(text, command, services, sections, cfg.openrouter_api_key)
     except PeakTimeError:
         logger.info("edit: пиковые часы — отказ (user %s)", update.effective_user.id)
         await reply(update, PEAK_MESSAGE)
@@ -811,8 +811,8 @@ async def finish_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         services = await get_services_cached(context)
         sections = await get_sections_cached(context)
-        result = await edit_existing(
-            current_text, current_title, instruction, services, sections, cfg.deepseek_api_key
+        result = edit_existing(
+            current_text, current_title, instruction, services, sections, cfg.openrouter_api_key
         )
     except PeakTimeError:
         await reply(update, PEAK_MESSAGE)

@@ -1,4 +1,4 @@
-"""Гейт пиковых часов DeepSeek (по UTC — это тариф API, не локальное время)."""
+"""Гейт пиковых часов OpenRouter (по UTC — это тариф API, не локальное время)."""
 from __future__ import annotations
 
 from datetime import datetime
