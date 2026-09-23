@@ -46,7 +46,7 @@ async def test_off_peak_calls_api():
         assert result["title"] == "T"
         assert result["section_id"] == 41
         _, kwargs = mock_post.call_args
-        assert kwargs["json"]["model"] == "openrouter/inclusionai/ling-3.0-flash-fin:free"
+        assert kwargs["json"]["model"] == "inclusionai/ling-3.0-flash-fin:free"
         assert kwargs["json"]["response_format"] == {"type": "json_object"}
         assert "Care Guide" in kwargs["json"]["messages"][1]["content"]
 

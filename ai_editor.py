@@ -1,4 +1,4 @@
-"""Редактура статьи через OpenRouter (openrouter/inclusionai/ling-3.0-flash-fin:free, JSON)."""
+"""Редактура статьи через OpenRouter (inclusionai/ling-3.0-flash-fin:free, JSON)."""
 from __future__ import annotations
 
 import json
@@ -96,7 +96,7 @@ def _call_openrouter(
         "Content-Type": "application/json",
     }
     body = {
-        "model": "openrouter/inclusionai/ling-3.0-flash-fin:free",
+        "model": "inclusionai/ling-3.0-flash-fin:free",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
