@@ -42,6 +42,7 @@ async def test_fallback_on_primary_failure():
         assert mock_post.call_count == 2
         assert mock_post.call_args_list[0].kwargs["json"]["model"] != FALLBACK_MODEL
         assert mock_post.call_args_list[1].kwargs["json"]["model"] == FALLBACK_MODEL
+        assert mock_post.call_args_list[1].kwargs["json"]["response_format"] == {"type": "json_object"}
 
 
 @pytest.mark.asyncio
@@ -55,7 +56,7 @@ async def test_calls_api():
         assert result["section_id"] == 41
         _, kwargs = mock_post.call_args
         assert kwargs["json"]["model"] == "inclusionai/ling-3.0-flash-fin:free"
-        assert kwargs["json"]["response_format"] == {"type": "json_object"}
+        assert "response_format" not in kwargs["json"]  # модель не поддерживает json_object
         assert "Care Guide" in kwargs["json"]["messages"][1]["content"]
 
 

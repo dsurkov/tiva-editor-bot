@@ -13,6 +13,8 @@ logger = logging.getLogger("ai_editor")
 
 MODEL = "inclusionai/ling-3.0-flash-fin:free"
 FALLBACK_MODEL = "z-ai/glm-5.3-flash"
+# Модели, поддерживающие response_format (json_object); остальным не слать — будет 400.
+JSON_RESPONSE_MODELS = {FALLBACK_MODEL}
 
 SYSTEM_PROMPT = """You are the editor of the TIVA BEAUTY beauty salon blog in Calgary, Canada.
 The website and blog are entirely in English — your readers are English-speaking salon customers.
@@ -96,8 +98,9 @@ def _post_chat(api_key: str, model: str, system_prompt: str, user_message: str) 
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ],
-        "response_format": {"type": "json_object"},
     }
+    if model in JSON_RESPONSE_MODELS:
+        body["response_format"] = {"type": "json_object"}
     response = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
         headers=headers,
