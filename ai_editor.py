@@ -11,6 +11,9 @@ from peak import is_peak
 
 logger = logging.getLogger("ai_editor")
 
+MODEL = "inclusionai/ling-3.0-flash-fin:free"
+FALLBACK_MODEL = "z-ai/glm-5.3-flash"
+
 SYSTEM_PROMPT = """You are the editor of the TIVA BEAUTY beauty salon blog in Calgary, Canada.
 The website and blog are entirely in English — your readers are English-speaking salon customers.
 
@@ -69,10 +72,6 @@ Return STRICTLY JSON without markdown wrappers or explanations. Schema:
 }"""
 
 
-class PeakTimeError(Exception):
-    """Сейчас пиковые часы — AI-функции недоступны."""
-
-
 class AIError(Exception):
     """Ошибка обращения к OpenRouter или парсинга ответа."""
 
@@ -85,39 +84,60 @@ def _sections_block(sections: list[tuple[int, str]]) -> str:
     return "\n".join(f"- {sid}: {name}" for sid, name in sections)
 
 
-def _call_openrouter(
-    api_key: str,
-    system_prompt: str,
-    user_message: str,
-) -> dict:
-    """Единая точка вызова OpenRouter (после гейта пика). Возвращает распарсенный JSON."""
+def _post_chat(api_key: str, model: str, system_prompt: str, user_message: str) -> str:
+    """POST к OpenRouter; возвращает content первого choice."""
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     body = {
-        "model": "inclusionai/ling-3.0-flash-fin:free",
+        "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
         ],
         "response_format": {"type": "json_object"},
     }
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers=headers,
+        json=body,
+        timeout=60,
+    )
+    response.raise_for_status()
+    data = response.json()
+    tokens = data.get("usage", {}).get("total_tokens", "?")
+    logger.debug("OpenRouter %s: ответ получен, токенов=%s", model, tokens)
+    return data["choices"][0]["message"]["content"]
+
+
+def _call_openrouter(
+    api_key: str,
+    system_prompt: str,
+    user_message: str,
+) -> dict:
+    """Единая точка вызова OpenRouter. Возвращает распарсенный JSON.
+
+    Пиковый гейт и fallback — только для DeepSeek-моделей (у DeepSeek льготный
+    ночной тариф): в пик запрос сразу уходит на FALLBACK_MODEL. При сбое
+    основной модели тоже пробуем fallback.
+    """
     try:
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=body,
-            timeout=60,
-        )
-        response.raise_for_status()
-        data = response.json()
-        tokens = data.get("usage", {}).get("total_tokens", "?")
-        logger.debug("OpenRouter: ответ получен, токенов=%s", tokens)
-        content = data["choices"][0]["message"]["content"]
+        if MODEL.startswith("deepseek") and is_peak(datetime.now(timezone.utc)):
+            logger.warning("DeepSeek пиковые часы — fallback на %s", FALLBACK_MODEL)
+            content = _post_chat(api_key, FALLBACK_MODEL, system_prompt, user_message)
+        else:
+            content = _post_chat(api_key, MODEL, system_prompt, user_message)
     except requests.RequestException as exc:
-        logger.error("OpenRouter API error: %s", exc)
-        raise AIError(f"Ошибка OpenRouter API: {exc}") from exc
+        if MODEL == FALLBACK_MODEL:
+            logger.error("OpenRouter API error: %s", exc)
+            raise AIError(f"Ошибка OpenRouter API: {exc}") from exc
+        logger.warning("Модель %s недоступна (%s) — fallback на %s", MODEL, exc, FALLBACK_MODEL)
+        try:
+            content = _post_chat(api_key, FALLBACK_MODEL, system_prompt, user_message)
+        except requests.RequestException as exc2:
+            logger.error("OpenRouter API error (fallback): %s", exc2)
+            raise AIError(f"Ошибка OpenRouter API: {exc2}") from exc2
 
     for attempt in (1, 2):
         try:
@@ -146,17 +166,9 @@ def edit_article(
     sections: list[tuple[int, str]],
     api_key: str,
 ) -> dict:
-    """Прогнать статью через OpenRouter. Возвращает dict из JSON-схемы.
-
-    ЕДИНСТВЕННАЯ точка гейта пика — все OpenRouter-функции проходят через неё.
-    """
-    if is_peak(datetime.now(timezone.utc)):
-        logger.info("edit_article: пиковые часы — отказ (текст %d симв.)", len(text))
-        raise PeakTimeError(
-            "Сейчас пиковые часы OpenRouter (01:00–04:00 и 06:00–10:00 UTC, пн–пт)."
-        )
+    """Прогнать статью через OpenRouter. Возвращает dict из JSON-схемы."""
     logger.debug(
-        "edit_article: непик, текст %d симв., услуг %d, разделов %d, команда=%r",
+        "edit_article: текст %d симв., услуг %d, разделов %d, команда=%r",
         len(text), len(services), len(sections), user_command,
     )
 
@@ -180,13 +192,8 @@ def edit_existing(
     api_key: str,
 ) -> dict:
     """Применить правку к существующей статье. Возвращает dict из JSON-схемы."""
-    if is_peak(datetime.now(timezone.utc)):
-        logger.info("edit_existing: пиковые часы — отказ")
-        raise PeakTimeError(
-            "Сейчас пиковые часы OpenRouter (01:00–04:00 и 06:00–10:00 UTC, пн–пт)."
-        )
     logger.debug(
-        "edit_existing: непик, current %d симв., instruction %d симв.",
+        "edit_existing: current %d симв., instruction %d симв.",
         len(current_text), len(instruction),
     )
 

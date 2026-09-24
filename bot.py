@@ -35,7 +35,7 @@ from telegram.ext import (
     filters,
 )
 
-from ai_editor import AIError, PeakTimeError, edit_article, edit_existing
+from ai_editor import AIError, edit_article, edit_existing
 from auth import AuthStore
 from config import Config, load_config
 from publish_calendar import build_calendar, format_calgary, plan_publish_time
@@ -50,11 +50,6 @@ logger = logging.getLogger("bot")
 CONTENT, EDIT, DATE, SUBMIT = range(4)
 EDAY, ELIST, EREQ, ECONFIRM = range(4, 8)
 REPORT_CAL = 8
-
-PEAK_MESSAGE = (
-    "⚠️ Сейчас пиковые часы OpenRouter (01:00–04:00 и 06:00–10:00 UTC, пн–пт). "
-    "Редактура/заголовок недоступны. Приходите в непиковое время."
-)
 
 MAX_PHOTOS = 3
 FINISH_CONTENT = "✅ Finish Content"
@@ -451,10 +446,6 @@ async def _run_edit(update: Update, context: ContextTypes.DEFAULT_TYPE, command:
         services = await get_services_cached(context)
         sections = await get_sections_cached(context)
         result = edit_article(text, command, services, sections, cfg.openrouter_api_key)
-    except PeakTimeError:
-        logger.info("edit: пиковые часы — отказ (user %s)", update.effective_user.id)
-        await reply(update, PEAK_MESSAGE)
-        return EDIT
     except AIError as exc:
         logger.error("edit: AIError: %s", exc)
         await reply(update, f"❌ Ошибка AI: {exc}")
@@ -814,9 +805,6 @@ async def finish_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result = edit_existing(
             current_text, current_title, instruction, services, sections, cfg.openrouter_api_key
         )
-    except PeakTimeError:
-        await reply(update, PEAK_MESSAGE)
-        return EREQ
     except AIError as exc:
         logger.error("edit_existing: AIError: %s", exc)
         await reply(update, f"❌ Ошибка AI: {exc}")

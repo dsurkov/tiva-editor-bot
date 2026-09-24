@@ -1,11 +1,11 @@
-"""Юнит-тесты ai_editor: гейт пика (без реального вызова OpenRouter)."""
+"""Юнит-тесты ai_editor: вызов OpenRouter, fallback-модель, парсинг (без реального API)."""
 import json
 from unittest.mock import patch
 
 import pytest
 import requests
 
-from ai_editor import AIError, PeakTimeError, edit_article, edit_existing
+from ai_editor import AIError, FALLBACK_MODEL, edit_article, edit_existing
 
 SECTIONS = [(40, "Salon News"), (41, "Care Guide"), (42, "Skincare")]
 
@@ -28,16 +28,24 @@ def _mock_response(json_data, status_code=200):
 
 
 @pytest.mark.asyncio
-async def test_peak_raises():
-    with patch("ai_editor.is_peak", return_value=True):
-        with pytest.raises(PeakTimeError):
-            edit_article("текст", None, [], SECTIONS, "fake-key")
-        with pytest.raises(PeakTimeError):
-            edit_existing("old", "Old", "fix it", [], SECTIONS, "fake-key")
+async def test_fallback_on_primary_failure():
+    """Основная модель недоступна (402) → повтор на fallback-модели."""
+    with patch("ai_editor.is_peak", return_value=False), patch(
+        "ai_editor.requests.post"
+    ) as mock_post:
+        mock_post.side_effect = [
+            _mock_response({}, status_code=402),
+            _mock_response(VALID_RESPONSE),
+        ]
+        result = edit_article("текст", None, [], SECTIONS, "fake-key")
+        assert result["title"] == "T"
+        assert mock_post.call_count == 2
+        assert mock_post.call_args_list[0].kwargs["json"]["model"] != FALLBACK_MODEL
+        assert mock_post.call_args_list[1].kwargs["json"]["model"] == FALLBACK_MODEL
 
 
 @pytest.mark.asyncio
-async def test_off_peak_calls_api():
+async def test_calls_api():
     with patch("ai_editor.is_peak", return_value=False), patch(
         "ai_editor.requests.post"
     ) as mock_post:
@@ -79,8 +87,8 @@ async def test_bad_json_raises():
 if __name__ == "__main__":
     import asyncio
 
-    asyncio.run(test_peak_raises())
-    asyncio.run(test_off_peak_calls_api())
+    asyncio.run(test_fallback_on_primary_failure())
+    asyncio.run(test_calls_api())
     asyncio.run(test_edit_existing_passes_instruction())
     asyncio.run(test_bad_json_raises())
     print("ai_editor: все тесты OK")

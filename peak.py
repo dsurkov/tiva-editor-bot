@@ -1,4 +1,7 @@
-"""Гейт пиковых часов OpenRouter (по UTC — это тариф API, не локальное время)."""
+"""Гейт пиковых часов DeepSeek (по UTC — льготный тариф API, не локальное время).
+
+Применяется только к DeepSeek-моделям: в пик запросы уходят на fallback-модель.
+"""
 from __future__ import annotations
 
 from datetime import datetime
