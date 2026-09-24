@@ -30,6 +30,9 @@ Rules:
   content: keyword lists, tag lists, comments, instructions to the editor, SEO notes,
   visible markup tags — anything not meant for the reader.
 - Do NOT insert any booking buttons or promotional call-to-action blocks into the text.
+- Do NOT repeat the headline: "edited_text" must NOT start with the title or any H1
+  version of it. The title lives only in the "title" field; start edited_text directly
+  with the body (a lead paragraph or a subheading).
 - You may add up to 2 natural internal links to relevant services from the provided list,
   only where contextually appropriate (format: anchor text with href).
 - Choose the best matching journal section from the provided list; return its id.
@@ -59,6 +62,9 @@ Rules:
 - The text is for the end visitor. Remove any service/technical content: keyword lists,
   tag lists, comments, instructions to the editor, SEO notes, visible markup.
 - Do NOT insert booking buttons or promotional call-to-action blocks.
+- Do NOT repeat the headline: "edited_text" must NOT start with the title or any H1
+  version of it. The title lives only in the "title" field; start edited_text directly
+  with the body (a lead paragraph or a subheading).
 - You may add up to 2 natural internal links to relevant services from the provided list,
   only where contextually appropriate.
 - Choose the best matching journal section from the provided list; return its id.
